@@ -1,0 +1,124 @@
+{
+  "info": {
+    "name": "FlexShop Reviews API",
+    "description": "Collection API pour le service Reviews FlexShop",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Liste des avis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/reviews",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "reviews"]
+            }
+          }
+        },
+        {
+          "name": "Liste avec filtre productId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/reviews?productId=1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "reviews"],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Créer un avis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/ld+json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"authorName\": \"Jean Dupont\",\n  \"rating\": 4,\n  \"comment\": \"Excellent produit !\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/reviews",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "reviews"]
+            }
+          }
+        },
+        {
+          "name": "Détail d'un avis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/reviews/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "reviews", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stats",
+      "item": [
+        {
+          "name": "Moyenne des notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/stats/reviews/average/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "stats", "reviews", "average", "1"]
+            }
+          }
+        },
+        {
+          "name": "Recherche full-text",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/stats/reviews/search?q=excellent",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "stats", "reviews", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "excellent"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

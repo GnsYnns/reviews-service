@@ -1,0 +1,212 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black}
+}
+
+\title{\textbf{Rapport Technique}\\Service Reviews - FlexShop}
+\author{FlexShop Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Présentation du projet}
+
+Ce document présente le service \texttt{reviews-service}, un microservice Symfony dédié à la gestion des avis clients pour la marketplace FlexShop.
+
+\subsection{Lien vers le dépôt Git}
+
+Le code source complet est disponible sur GitHub :
+
+\begin{center}
+\url{https://github.com/GnsYnns/reviews-service}
+\end{center}
+
+\section{Architecture et endpoints}
+
+\subsection{Endpoints API}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Méthode} & \textbf{Endpoint} & \textbf{Description} \\
+\midrule
+GET & /api/reviews & Liste paginée des avis \\
+GET & /api/reviews/\{id\} & Détail d'un avis \\
+POST & /api/reviews & Créer un avis \\
+PUT & /api/reviews/\{id\} & Modifier un avis \\
+DELETE & /api/reviews/\{id\} & Supprimer un avis \\
+\midrule
+GET & /api/stats/reviews/average/\{productId\} & Moyenne des notes \\
+GET & /api/stats/reviews/search?q=... & Recherche full-text \\
+\bottomrule
+\end{tabular}
+\caption{Endpoints du service Reviews}
+\end{table}
+
+\subsection{Swagger UI}
+
+La documentation interactive est accessible via Swagger UI :
+
+\begin{center}
+\url{http://localhost:8000/api}
+\end{center}
+
+
+\section{Difficultés rencontrées et solutions}
+
+\subsection{Difficulté 1 : Conflit de port avec le service Catalogue}
+
+\textbf{Problème :} Le service Symfony (port 8000) interceptait les appels vers le Catalogue Django configuré sur le même port.
+
+\textbf{Solution :} Modification de l'URL du Catalogue dans \texttt{ProductExistsValidator.php} :
+
+\begin{lstlisting}[language=PHP]
+private string $catalogUrl = 'http://localhost:8001/api/v1'
+\end{lstlisting}
+
+Le Catalogue Django doit maintenant tourner sur le port 8001.
+
+\subsection{Difficulté 2 : Conflit de routes API Platform}
+
+\textbf{Problème :} Les endpoints custom \texttt{/api/reviews/search} et \texttt{/api/reviews/average} entraient en conflit avec le routage d'API Platform, retournant des erreurs 404.
+
+\textbf{Solution :} Changement du préfixe de route pour éviter le conflit :
+
+\begin{lstlisting}[language=PHP]
+#[Route('/api/stats')]
+class ReviewStatsController extends AbstractController
+\end{lstlisting}
+
+Les endpoints sont maintenant accessibles via \texttt{/api/stats/reviews/...}.
+
+\subsection{Difficulté 3 : Content-Type pour API Platform}
+
+\textbf{Problème :} API Platform rejette les requêtes avec \texttt{Content-Type: application/json}, exigeant \texttt{application/ld+json}.
+
+\textbf{Solution :} Mise à jour des tests PHPUnit et documentation pour utiliser le bon header :
+
+\begin{lstlisting}
+Content-Type: application/ld+json
+\end{lstlisting}
+
+\subsection{Difficulté 4 : Configuration base de données test}
+
+\textbf{Problème :} PHPUnit tentait de se connecter à une base \texttt{reviews\_test} qui n'existait pas (suffixe automatique Doctrine).
+
+\textbf{Solution :} Suppression de la configuration \texttt{dbname\_suffix} dans \texttt{config/packages/doctrine.yaml} :
+
+\begin{lstlisting}[language=YAML]
+when@test:
+    doctrine:
+        dbal:
+            # dbname_suffix supprime
+\end{lstlisting}
+
+\subsection{Difficulté 5 : Cache HTTP pour le Catalogue}
+
+\textbf{Problème :} Chaque validation de produit déclenchait un appel HTTP vers le Catalogue, risquant de surcharger le service.
+
+\textbf{Solution :} Implémentation d'un cache de 60 secondes :
+
+\begin{lstlisting}[language=PHP]
+$exists = $this->cache->get($cacheKey, function () use ($value) {
+    $response = $this->httpClient->request(
+        'GET',
+        $this->catalogUrl . '/products/' . $value . '/',
+        ['timeout' => 3]
+    );
+    return $response->getStatusCode() !== 404;
+});
+\end{lstlisting}
+
+Pool de cache dédié dans \texttt{cache.yaml} :
+
+\begin{lstlisting}[language=YAML]
+catalog.cache:
+    adapter: cache.app
+    default_lifetime: 60
+\end{lstlisting}
+
+\section{Collection Postman}
+
+Une collection Postman exportée est disponible dans le dossier \texttt{docs/} :
+
+\begin{verbatim}
+Fichier : docs/FlexShop-Reviews-API.postman_collection.json
+\end{verbatim}
+
+Cette collection contient les requêtes suivantes :
+\begin{itemize}
+    \item GET /api/reviews (liste paginée)
+    \item GET /api/reviews?productId=1 (filtrage)
+    \item POST /api/reviews (création avec validation)
+    \item GET /api/stats/reviews/average/1 (moyenne)
+    \item GET /api/stats/reviews/search?q=excellent (recherche)
+\end{itemize}
+
+\section{Validation et tests}
+
+\subsection{Tests PHPUnit}
+
+Les tests sont exécutés avec :
+
+\begin{lstlisting}
+php bin/phpunit
+\end{lstlisting}
+
+Résultats des 3 tests implémentés :
+\begin{itemize}
+    \item \texttt{testGetReviewsReturnsOk} - Vérifie le endpoint liste
+    \item \texttt{testGetNonExistentReviewReturns404} - Vérifie la gestion des 404
+    \item \texttt{testCreateReviewWithInvalidRatingFails} - Vérifie la validation (rating 1-5)
+\end{itemize}
+
+\subsection{Points d'attention implémentés}
+
+\begin{itemize}
+    \item \textbf{Timeout HTTP} : 3 secondes sur les appels au Catalogue
+    \item \textbf{Gestion Catalogue DOWN} : Try/catch avec message "Catalogue indisponible"
+    \item \textbf{Validation custom} : \texttt{ProductExists} vérifie l'existence avant création
+    \item \textbf{Cache Catalogue} : 60 secondes pour limiter les appels réseau
+\end{itemize}
+
+\section{Conclusion}
+
+Le service Reviews est fonctionnel avec :
+\begin{itemize}
+    \item API CRUD complète via API Platform
+    \item Endpoints custom pour statistiques et recherche
+    \item Validation métier avec vérification Catalogue
+    \item Cache HTTP pour optimiser les performances
+    \item Tests PHPUnit validant les cas principaux
+\end{itemize}
+
+\end{document}
