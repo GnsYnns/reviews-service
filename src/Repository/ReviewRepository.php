@@ -40,4 +40,16 @@ class ReviewRepository extends ServiceEntityRepository
     //            ->getOneOrNullResult()
     //        ;
     //    }
+
+    public function getAverageRatingForProduct(int $productId): ?float
+    {
+        $result = $this->createQueryBuilder('r')
+            ->select('AVG(r.rating) as avgRating')
+            ->where('r.productId = :productId')
+            ->setParameter('productId', $productId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $result !== null ? (float) $result : null;
+    }
 }
