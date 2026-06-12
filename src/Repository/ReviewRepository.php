@@ -52,4 +52,14 @@ class ReviewRepository extends ServiceEntityRepository
 
         return $result !== null ? (float) $result : null;
     }
+
+    public function searchByComment(string $query): array
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.comment LIKE :query')
+            ->setParameter('query', '%' . $query . '%')
+            ->orderBy('r.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }
